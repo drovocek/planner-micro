@@ -1,7 +1,8 @@
 rootProject.name = 'planner-micro'
 
 includeBuild 'planner-server'
-//includeBuild 'eureka-client'
+includeBuild 'planner-config'
+includeBuild 'planner-gateway'
 //includeBuild 'eureka-client-2'
 //includeBuild 'api-gateway'
 //includeBuild 'config-server'
