@@ -1,7 +1,6 @@
 package edu.volkov.micro.planner.entity;
 
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -22,7 +21,7 @@ import java.util.Objects;
  */
 
 @Entity
-@Table(name = "category", schema = "todolist", catalog = "postgres")
+@Table(name = "category", schema = "todo", catalog = "planner_todo")
 @NoArgsConstructor
 @AllArgsConstructor
 @Setter
