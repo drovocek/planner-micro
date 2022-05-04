@@ -22,6 +22,16 @@
                   <project path="$PROJECT_DIR$/planner-gateway" />
                 </projects>
               </build>
+              <build path="$PROJECT_DIR$/planner-entity" name="planner-entity">
+                <projects>
+                  <project path="$PROJECT_DIR$/planner-entity" />
+                </projects>
+              </build>
+              <build path="$PROJECT_DIR$/planner-todo" name="planner-todo">
+                <projects>
+                  <project path="$PROJECT_DIR$/planner-todo" />
+                </projects>
+              </build>
             </builds>
           </compositeBuild>
         </compositeConfiguration>
@@ -34,8 +44,10 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/planner-config" />
+            <option value="$PROJECT_DIR$/planner-entity" />
             <option value="$PROJECT_DIR$/planner-gateway" />
             <option value="$PROJECT_DIR$/planner-server" />
+            <option value="$PROJECT_DIR$/planner-todo" />
           </set>
         </option>
       </GradleProjectSettings>
@@ -46,6 +58,15 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/planner-config" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="distributionType" value="DEFAULT_WRAPPED" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/planner-entity" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/planner-entity" />
           </set>
         </option>
       </GradleProjectSettings>
@@ -66,6 +87,15 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$/planner-server" />
+          </set>
+        </option>
+      </GradleProjectSettings>
+      <GradleProjectSettings>
+        <option name="distributionType" value="DEFAULT_WRAPPED" />
+        <option name="externalProjectPath" value="$PROJECT_DIR$/planner-todo" />
+        <option name="modules">
+          <set>
+            <option value="$PROJECT_DIR$/planner-todo" />
           </set>
         </option>
       </GradleProjectSettings>
