@@ -1,8 +1,10 @@
 package edu.volkov.micro.planner.todo.controller;
 
 import edu.volkov.micro.planner.entity.Task;
+import edu.volkov.micro.planner.todo.feign.UserFeignClient;
 import edu.volkov.micro.planner.todo.search.TaskSearchValues;
 import edu.volkov.micro.planner.todo.service.TaskService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -31,21 +33,7 @@ import java.util.NoSuchElementException;
 Названия методов могут быть любыми, главное не дублировать их имена и URL mapping
 
 */
-
-/*
-
-Чтобы дать меньше шансов для взлома (например, CSRF атак): POST/PUT запросы могут изменять/фильтровать закрытые данные, а GET запросы - для получения незащищенных данных
-Т.е. GET-запросы не должны использоваться для изменения/получения секретных данных
-
-Если возникнет exception - вернется код  500 Internal Server Error, поэтому не нужно все действия оборачивать в try-catch
-
-Используем @RestController вместо обычного @Controller, чтобы все ответы сразу оборачивались в JSON,
-иначе пришлось бы добавлять лишние объекты в код, использовать @ResponseBody для ответа, указывать тип отправки JSON
-
-Названия методов могут быть любыми, главное не дублировать их имена и URL mapping
-
-*/
-
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/task") // базовый URI
 public class TaskController {
@@ -53,13 +41,8 @@ public class TaskController {
     public static final String ID_COLUMN = "id"; // имя столбца id
     private final TaskService taskService; // сервис для доступа к данным (напрямую к репозиториям не обращаемся)
 
-
-    // используем автоматическое внедрение экземпляра класса через конструктор
-    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
-    public TaskController(TaskService taskService) {
-        this.taskService = taskService;
-    }
-
+    // микросервисы для работы с пользователями
+    private final UserFeignClient userFeignClient;
 
     // получение всех данных
     @PostMapping("/all")
@@ -82,7 +65,13 @@ public class TaskController {
             return new ResponseEntity("missed param: title", HttpStatus.NOT_ACCEPTABLE);
         }
 
-        return ResponseEntity.ok(taskService.add(task)); // возвращаем созданный объект со сгенерированным id
+        // если такой пользователь существует
+        if (userFeignClient.findUserById(task.getUserId()) != null) { // вызываем микросервис из другого модуля
+            return ResponseEntity.ok(taskService.add(task)); // возвращаем добавленный объект с заполненным ID
+        }
+
+        // если пользователя НЕ существует
+        return new ResponseEntity("user id=" + task.getUserId() + " not found", HttpStatus.NOT_ACCEPTABLE);
 
     }
 
@@ -96,7 +85,7 @@ public class TaskController {
             return new ResponseEntity("missed param: id", HttpStatus.NOT_ACCEPTABLE);
         }
 
-        // если передали пустое значение title
+        // если передали пустое значение
         if (task.getTitle() == null || task.getTitle().trim().length() == 0) {
             return new ResponseEntity("missed param: title", HttpStatus.NOT_ACCEPTABLE);
         }
@@ -149,7 +138,10 @@ public class TaskController {
     @PostMapping("/search")
     public ResponseEntity<Page<Task>> search(@RequestBody TaskSearchValues taskSearchValues) throws ParseException {
 
-        // исключить NullPointerException
+        // все заполненные условия проверяются одновременно (т.е. И, а не ИЛИ)
+        // это можно изменять в запросе репозитория
+
+        // можно передавать не полный title, а любой текст для поиска
         String title = taskSearchValues.getTitle() != null ? taskSearchValues.getTitle() : null;
 
         // конвертируем Boolean в Integer

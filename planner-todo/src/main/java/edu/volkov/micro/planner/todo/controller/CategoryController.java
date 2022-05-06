@@ -1,8 +1,10 @@
 package edu.volkov.micro.planner.todo.controller;
 
 import edu.volkov.micro.planner.entity.Category;
+import edu.volkov.micro.planner.todo.feign.UserFeignClient;
 import edu.volkov.micro.planner.todo.search.CategorySearchValues;
 import edu.volkov.micro.planner.todo.service.CategoryService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,18 +23,16 @@ import java.util.NoSuchElementException;
 
 */
 
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/category") // базовый URI
 public class CategoryController {
 
     // доступ к данным из БД
-    private CategoryService categoryService;
+    private final CategoryService categoryService;
 
-    // используем автоматическое внедрение экземпляра класса через конструктор
-    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
-    public CategoryController(CategoryService categoryService) {
-        this.categoryService = categoryService;
-    }
+    // микросервисы для работы с пользователями
+    private final UserFeignClient userFeignClient;
 
     @PostMapping("/all")
     public List<Category> findAll(@RequestBody Long userId) {
@@ -54,9 +54,15 @@ public class CategoryController {
             return new ResponseEntity("missed param: title MUST be not null", HttpStatus.NOT_ACCEPTABLE);
         }
 
-        return ResponseEntity.ok(categoryService.add(category)); // возвращаем добавленный объект с заполненным ID
-    }
+        // если такой пользователь существует
+        if (userFeignClient.findUserById(category.getUserId()) != null) { // вызываем микросервис из другого модуля
+            return ResponseEntity.ok(categoryService.add(category)); // возвращаем добавленный объект с заполненным ID
+        }
 
+        // если пользователя НЕ существует
+        return new ResponseEntity("user id=" + category.getUserId() + " not found", HttpStatus.NOT_ACCEPTABLE);
+
+    }
 
 
     @PutMapping("/update")
@@ -77,7 +83,6 @@ public class CategoryController {
 
         return new ResponseEntity(HttpStatus.OK); // просто отправляем статус 200 (операция прошла успешно)
     }
-
 
 
     // для удаления используем тип запроса DELETE и передаем ID для удаления
@@ -103,8 +108,8 @@ public class CategoryController {
     public ResponseEntity<List<Category>> search(@RequestBody CategorySearchValues categorySearchValues) {
 
         // проверка на обязательные параметры
-        if (categorySearchValues.getUserId() == null) {
-            return new ResponseEntity("missed param: email", HttpStatus.NOT_ACCEPTABLE);
+        if (categorySearchValues.getUserId() == null || categorySearchValues.getUserId() == 0) {
+            return new ResponseEntity("missed param: user id", HttpStatus.NOT_ACCEPTABLE);
         }
 
         // поиск категорий пользователя по названию

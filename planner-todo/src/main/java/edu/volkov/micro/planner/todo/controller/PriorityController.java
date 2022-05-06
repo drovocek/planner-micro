@@ -1,8 +1,10 @@
 package edu.volkov.micro.planner.todo.controller;
 
 import edu.volkov.micro.planner.entity.Priority;
+import edu.volkov.micro.planner.todo.feign.UserFeignClient;
 import edu.volkov.micro.planner.todo.search.PrioritySearchValues;
 import edu.volkov.micro.planner.todo.service.PriorityService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,20 +28,16 @@ import java.util.NoSuchElementException;
 
 */
 
-
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/priority") // базовый URI
 public class PriorityController {
 
     // доступ к данным из БД
-    private PriorityService priorityService;
+    private final PriorityService priorityService;
 
-    // используем автоматическое внедрение экземпляра класса через конструктор
-    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
-    public PriorityController(PriorityService priorityService) {
-        this.priorityService = priorityService;
-    }
-
+    // микросервисы для работы с пользователями
+    private final UserFeignClient userFeignClient;
 
     @PostMapping("/all")
     public List<Priority> findAll(@RequestBody Long userId) {
@@ -66,8 +64,14 @@ public class PriorityController {
             return new ResponseEntity("missed param: color", HttpStatus.NOT_ACCEPTABLE);
         }
 
-        // save работает как на добавление, так и на обновление
-        return ResponseEntity.ok(priorityService.add(priority));
+        // если такой пользователь существует
+        if (userFeignClient.findUserById(priority.getUserId()) != null) { // вызываем микросервис из другого модуля
+            return ResponseEntity.ok(priorityService.add(priority)); // возвращаем добавленный объект с заполненным ID
+        }
+
+        // если пользователя НЕ существует
+        return new ResponseEntity("user id=" + priority.getUserId() + " not found", HttpStatus.NOT_ACCEPTABLE);
+
     }
 
 
@@ -139,8 +143,8 @@ public class PriorityController {
     public ResponseEntity<List<Priority>> search(@RequestBody PrioritySearchValues prioritySearchValues) {
 
         // проверка на обязательные параметры
-        if (prioritySearchValues.getUserId() == null) {
-            return new ResponseEntity("missed param: userId", HttpStatus.NOT_ACCEPTABLE);
+        if (prioritySearchValues.getUserId() == null || prioritySearchValues.getUserId() == 0) {
+            return new ResponseEntity("missed param: user id", HttpStatus.NOT_ACCEPTABLE);
         }
 
         // если вместо текста будет пусто или null - вернутся все категории
