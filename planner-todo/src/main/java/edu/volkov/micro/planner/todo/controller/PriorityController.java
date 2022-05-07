@@ -1,10 +1,9 @@
 package edu.volkov.micro.planner.todo.controller;
 
 import edu.volkov.micro.planner.entity.Priority;
-import edu.volkov.micro.planner.todo.feign.UserFeignClient;
+import edu.volkov.micro.planner.plannerutil.rest.resttemplate.UserRestBuilder;
 import edu.volkov.micro.planner.todo.search.PrioritySearchValues;
 import edu.volkov.micro.planner.todo.service.PriorityService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -28,16 +27,24 @@ import java.util.NoSuchElementException;
 
 */
 
-@RequiredArgsConstructor
+
 @RestController
 @RequestMapping("/priority") // базовый URI
 public class PriorityController {
 
     // доступ к данным из БД
-    private final PriorityService priorityService;
+    private PriorityService priorityService;
 
     // микросервисы для работы с пользователями
-    private final UserFeignClient userFeignClient;
+    private UserRestBuilder userRestBuilder;
+
+    // используем автоматическое внедрение экземпляра класса через конструктор
+    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
+    public PriorityController(PriorityService priorityService, UserRestBuilder userRestBuilder) {
+        this.priorityService = priorityService;
+        this.userRestBuilder = userRestBuilder;
+    }
+
 
     @PostMapping("/all")
     public List<Priority> findAll(@RequestBody Long userId) {
@@ -65,7 +72,7 @@ public class PriorityController {
         }
 
         // если такой пользователь существует
-        if (userFeignClient.findUserById(priority.getUserId()) != null) { // вызываем микросервис из другого модуля
+        if (userRestBuilder.userExists(priority.getUserId())) { // вызываем микросервис из другого модуля
             return ResponseEntity.ok(priorityService.add(priority)); // возвращаем добавленный объект с заполненным ID
         }
 

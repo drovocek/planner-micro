@@ -1,10 +1,9 @@
 package edu.volkov.micro.planner.todo.controller;
 
 import edu.volkov.micro.planner.entity.Task;
-import edu.volkov.micro.planner.todo.feign.UserFeignClient;
+import edu.volkov.micro.planner.plannerutil.rest.resttemplate.UserRestBuilder;
 import edu.volkov.micro.planner.todo.search.TaskSearchValues;
 import edu.volkov.micro.planner.todo.service.TaskService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -33,7 +32,7 @@ import java.util.NoSuchElementException;
 Названия методов могут быть любыми, главное не дублировать их имена и URL mapping
 
 */
-@RequiredArgsConstructor
+
 @RestController
 @RequestMapping("/task") // базовый URI
 public class TaskController {
@@ -42,7 +41,15 @@ public class TaskController {
     private final TaskService taskService; // сервис для доступа к данным (напрямую к репозиториям не обращаемся)
 
     // микросервисы для работы с пользователями
-    private final UserFeignClient userFeignClient;
+    private UserRestBuilder userRestBuilder;
+
+    // используем автоматическое внедрение экземпляра класса через конструктор
+    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
+    public TaskController(TaskService taskService, UserRestBuilder userRestBuilder) {
+        this.taskService = taskService;
+        this.userRestBuilder = userRestBuilder;
+    }
+
 
     // получение всех данных
     @PostMapping("/all")
@@ -66,7 +73,7 @@ public class TaskController {
         }
 
         // если такой пользователь существует
-        if (userFeignClient.findUserById(task.getUserId()) != null) { // вызываем микросервис из другого модуля
+        if (userRestBuilder.userExists(task.getUserId())) { // вызываем микросервис из другого модуля
             return ResponseEntity.ok(taskService.add(task)); // возвращаем добавленный объект с заполненным ID
         }
 
