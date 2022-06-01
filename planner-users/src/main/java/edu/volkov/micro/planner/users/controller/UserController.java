@@ -2,8 +2,10 @@ package edu.volkov.micro.planner.users.controller;
 
 import edu.volkov.micro.planner.entity.User;
 import edu.volkov.micro.planner.plannerutil.rest.webclient.UserWebClientBuilder;
+import edu.volkov.micro.planner.users.mq.MessageProducer;
 import edu.volkov.micro.planner.users.search.UserSearchValues;
 import edu.volkov.micro.planner.users.service.UserService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -30,7 +32,7 @@ import java.util.Optional;
 Названия методов могут быть любыми, главное не дублировать их имена и URL mapping
 
 */
-
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/user") // базовый URI
 public class UserController {
@@ -39,15 +41,9 @@ public class UserController {
     private final UserService userService; // сервис для доступа к данным (напрямую к репозиториям не обращаемся)
 
     // микросервисы для работы с пользователями
-    private UserWebClientBuilder userWebClientBuilder;
+    private final UserWebClientBuilder userWebClientBuilder;
 
-    // используем автоматическое внедрение экземпляра класса через конструктор
-    // не используем @Autowired ля переменной класса, т.к. "Field injection is not recommended "
-    public UserController(UserService userService, UserWebClientBuilder userWebClientBuilder) {
-        this.userService = userService;
-        this.userWebClientBuilder = userWebClientBuilder;
-
-    }
+    private final MessageProducer messageProducer;
 
 
     // добавление
@@ -76,12 +72,16 @@ public class UserController {
         // добавляем пользователя
         user = userService.add(user);
 
+//        if (user != null) {
+//            // заполняем начальные данные пользователя (в параллелном потоке)
+//            userWebClientBuilder.initUserData(user.getId()).subscribe(result -> {
+//                        System.out.println("user populated: " + result);
+//                    }
+//            );
+//        }
+
         if (user != null) {
-            // заполняем начальные данные пользователя (в параллелном потоке)
-            userWebClientBuilder.initUserData(user.getId()).subscribe(result -> {
-                        System.out.println("user populated: " + result);
-                    }
-            );
+            messageProducer.newUserAction(user.getId());
         }
 
         return ResponseEntity.ok(user); // возвращаем созданный объект со сгенерированным id
